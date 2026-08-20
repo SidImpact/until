@@ -47,6 +47,14 @@ export default function RootLayout({
         <main>
           {children}
         </main>
+        <footer style={{ borderTop: '1px solid var(--border)', padding: '32px 24px', textAlign: 'center', marginTop: 'auto' }}>
+          <div className="container text-muted" style={{ fontSize: '0.875rem' }}>
+            <p style={{ marginBottom: '8px' }}>UNTIL — Developed by SID IMPACT</p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+              <Link href="/support" style={{ textDecoration: 'underline' }}>Support the Developer & Feedback</Link>
+            </div>
+          </div>
+        </footer>
       </body>
     </html>
   )

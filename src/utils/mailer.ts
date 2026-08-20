@@ -82,3 +82,30 @@ export async function sendRevealEmail(to: string, postTitle: string, postUrl: st
   
   return 'Sent to real inbox'
 }
+
+export async function sendFeedbackEmail(userEmail: string, message: string) {
+  const mailer = await getMailer()
+  const fromEmail = process.env.EMAIL_FROM || (process.env.RESEND_API_KEY ? 'onboarding@resend.dev' : '"UNTIL Platform" <noreply@until.app>')
+  const toEmail = 'sidimpact6196@gmail.com'
+
+  const info = await mailer.sendMail({
+    from: fromEmail,
+    to: toEmail,
+    subject: `New Feedback for UNTIL from ${userEmail || 'Anonymous'}`,
+    text: `You have received new feedback from the UNTIL platform.\n\nFrom: ${userEmail || 'Anonymous'}\n\nMessage:\n${message}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E5E5E5; border-radius: 8px;">
+        <h2 style="text-transform: uppercase; letter-spacing: -0.03em;">New Platform Feedback</h2>
+        <p style="font-size: 14px; color: #666; margin-bottom: 24px;">
+          <strong>From:</strong> ${userEmail || 'Anonymous'}
+        </p>
+        <div style="background: #F8F7F4; padding: 16px; border-radius: 8px; color: #0A0A0A; white-space: pre-wrap;">
+          ${message}
+        </div>
+      </div>
+    `,
+  })
+
+  console.log('Feedback email sent: %s', info.messageId)
+  return true
+}

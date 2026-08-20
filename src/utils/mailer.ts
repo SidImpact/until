@@ -83,24 +83,50 @@ export async function sendRevealEmail(to: string, postTitle: string, postUrl: st
   return 'Sent to real inbox'
 }
 
-export async function sendFeedbackEmail(userEmail: string, message: string) {
+export interface FeedbackPayload {
+  name?: string
+  email?: string
+  feedbackType: string
+  message: string
+}
+
+export async function sendFeedbackEmail(payload: FeedbackPayload) {
   const mailer = await getMailer()
   const fromEmail = process.env.EMAIL_FROM || (process.env.RESEND_API_KEY ? 'onboarding@resend.dev' : '"UNTIL Platform" <noreply@until.app>')
-  const toEmail = 'sidimpact6196@gmail.com'
+  const recipientEmail = 'sidimpact6196@gmail.com'
+
+  const senderName = payload.name?.trim() || 'Anonymous User'
+  const senderEmail = payload.email?.trim() || 'Not provided'
+  const feedbackType = payload.feedbackType || 'General Feedback'
 
   const info = await mailer.sendMail({
     from: fromEmail,
-    to: toEmail,
-    subject: `New Feedback for UNTIL from ${userEmail || 'Anonymous'}`,
-    text: `You have received new feedback from the UNTIL platform.\n\nFrom: ${userEmail || 'Anonymous'}\n\nMessage:\n${message}`,
+    to: recipientEmail,
+    replyTo: payload.email?.trim() || undefined,
+    subject: `💬 [UNTIL Feedback] ${feedbackType} from ${senderName}`,
+    text: `New Feedback Received on UNTIL:\n\nType: ${feedbackType}\nFrom: ${senderName} (${senderEmail})\n\nMessage:\n${payload.message}`,
     html: `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E5E5E5; border-radius: 8px;">
-        <h2 style="text-transform: uppercase; letter-spacing: -0.03em;">New Platform Feedback</h2>
-        <p style="font-size: 14px; color: #666; margin-bottom: 24px;">
-          <strong>From:</strong> ${userEmail || 'Anonymous'}
-        </p>
-        <div style="background: #F8F7F4; padding: 16px; border-radius: 8px; color: #0A0A0A; white-space: pre-wrap;">
-          ${message}
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E5E5E5; border-radius: 8px; background: #FFFFFF;">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #0A0A0A; padding-bottom: 16px; margin-bottom: 20px;">
+          <h2 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.03em; color: #0A0A0A;">
+            UNTIL FEEDBACK
+          </h2>
+          <span style="background: #F0EFEA; color: #0A0A0A; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; text-transform: uppercase;">
+            ${feedbackType}
+          </span>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <p style="margin: 4px 0; font-size: 14px; color: #666666;"><strong>Sender:</strong> ${senderName}</p>
+          <p style="margin: 4px 0; font-size: 14px; color: #666666;"><strong>Email / Reply To:</strong> ${senderEmail}</p>
+        </div>
+
+        <div style="background: #F8F7F4; border: 1px solid #E5E5E5; border-radius: 6px; padding: 18px; margin-bottom: 24px;">
+          <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #0A0A0A; white-space: pre-wrap;">${payload.message}</p>
+        </div>
+
+        <div style="font-size: 12px; color: #888888; text-align: center; border-top: 1px solid #EAEAEA; padding-top: 12px;">
+          Delivered automatically from the UNTIL Platform Feedback Collector.
         </div>
       </div>
     `,

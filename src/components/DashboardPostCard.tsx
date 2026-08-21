@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
 import { deletePost, getCreatorPreview } from '@/app/actions/post'
 import CreatorPreviewModal from './CreatorPreviewModal'
 
 export default function DashboardPostCard({ post }: { post: any }) {
+  const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
@@ -55,7 +57,11 @@ export default function DashboardPostCard({ post }: { post: any }) {
     setIsDeleting(true)
     setError('')
     try {
-      await deletePost(post.id)
+      const res = await deletePost(post.id)
+      if (res?.success) {
+        setShowConfirm(false)
+        router.refresh()
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to delete UNTIL')
       setIsDeleting(false)

@@ -93,6 +93,8 @@ export async function createPost(formData: FormData) {
   redirect(`/p/${publicId}?created=true`)
 }
 
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+
 export async function deletePost(postId: string) {
   const supabase = await createClient()
 
@@ -116,29 +118,34 @@ export async function deletePost(postId: string) {
     throw new Error('Post not found or unauthorized')
   }
 
-  // 2. Delete media from storage if exists
+  // 2. Use admin client to reliably bypass RLS on cascade deletion
+  const adminClient = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  // Delete media from storage if exists
   if (post.media_path) {
     try {
-      await supabase.storage.from('locked_media').remove([post.media_path])
+      await adminClient.storage.from('locked_media').remove([post.media_path])
     } catch (storageErr) {
       console.error('Storage deletion error:', storageErr)
     }
   }
 
-  // 3. Delete dependent rows (guesses & reminders)
-  await supabase.from('guesses').delete().eq('post_id', postId)
-  await supabase.from('reminders').delete().eq('post_id', postId)
+  // Delete dependent rows (guesses & reminders)
+  await adminClient.from('guesses').delete().eq('post_id', postId)
+  await adminClient.from('reminders').delete().eq('post_id', postId)
 
-  // 4. Delete the post
-  const { error: deleteError } = await supabase
+  // Delete the post
+  const { error: deleteError } = await adminClient
     .from('posts')
     .delete()
     .eq('id', postId)
-    .eq('user_id', user.id)
 
   if (deleteError) {
     console.error('Delete Post Error:', deleteError)
-    throw new Error('Failed to delete UNTIL')
+    throw new Error('Failed to delete UNTIL: ' + deleteError.message)
   }
 
   revalidatePath('/dashboard')

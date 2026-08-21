@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { encryptContent, hashContent } from '@/utils/encryption'
+import { encryptContent, decryptContent, hashContent } from '@/utils/encryption'
 import { nanoid } from 'nanoid'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -143,4 +143,53 @@ export async function deletePost(postId: string) {
 
   revalidatePath('/dashboard')
   return { success: true }
+}
+
+export async function getCreatorPreview(postId: string) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
+
+  const { data: post, error } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('id', postId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (error || !post) {
+    throw new Error('Post not found or unauthorized')
+  }
+
+  const decryptedMessage = decryptContent(post.encrypted_content)
+  let mediaUrl = ''
+
+  if (post.media_path) {
+    const { data } = await supabase.storage
+      .from('locked_media')
+      .createSignedUrl(post.media_path, 3600)
+    if (data?.signedUrl) {
+      mediaUrl = data.signedUrl
+    }
+  }
+
+  return {
+    id: post.id,
+    publicId: post.public_id,
+    title: post.title,
+    postType: post.post_type,
+    authorName: post.author_name,
+    message: decryptedMessage,
+    mediaUrl,
+    isVideo: post.media_path ? /\.(mp4|webm|mov|m4v|ogg)$/i.test(post.media_path) : false,
+    revealAt: post.reveal_at,
+    lockedAt: post.locked_at,
+    status: post.status,
+  }
 }

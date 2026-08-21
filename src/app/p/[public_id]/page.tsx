@@ -5,6 +5,7 @@ import Countdown from '@/components/Countdown'
 import NotifyMe from '@/components/NotifyMe'
 import ShareButtons from '@/components/ShareButtons'
 import GuessesSection from '@/components/GuessesSection'
+import CreatorPagePeek from '@/components/CreatorPagePeek'
 import { getGuesses } from '@/app/actions/guesses'
 import { Metadata } from 'next'
 
@@ -77,6 +78,12 @@ export default async function PublicPostPage({
   // but we can only fetch decrypted content if we decide to do it on-the-fly.
   // Doing it on the fly:
   
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const isOwner = Boolean(user && user.id === post.user_id)
+
   let decryptedMessage = ''
   let mediaUrl = ''
 
@@ -90,6 +97,22 @@ export default async function PublicPostPage({
       
       if (data?.signedUrl) {
         mediaUrl = data.signedUrl
+      }
+    }
+  }
+
+  let creatorDecryptedMessage = ''
+  let creatorMediaUrl = ''
+
+  if (isOwner && !isRevealed) {
+    creatorDecryptedMessage = decryptContent(post.encrypted_content)
+    if (post.media_path) {
+      const { data } = await supabase.storage
+        .from('locked_media')
+        .createSignedUrl(post.media_path, 3600)
+      
+      if (data?.signedUrl) {
+        creatorMediaUrl = data.signedUrl
       }
     }
   }
@@ -121,6 +144,16 @@ export default async function PublicPostPage({
           </div>
 
           {!isRevealed && <div className="badge-sealed">SEALED & ENCRYPTED</div>}
+
+          {/* Exclusive Creator Peek Component (Only visible to the authenticated owner while locked) */}
+          {isOwner && !isRevealed && (
+            <CreatorPagePeek
+              decryptedMessage={creatorDecryptedMessage}
+              mediaUrl={creatorMediaUrl}
+              isVideo={isVideo}
+              revealAt={post.reveal_at}
+            />
+          )}
 
           {isRevealed ? (
             <div className="mt-8 mb-8 text-left" style={{ fontSize: '1.25rem', lineHeight: 1.8 }}>

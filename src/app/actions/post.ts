@@ -92,3 +92,55 @@ export async function createPost(formData: FormData) {
   revalidatePath('/dashboard')
   redirect(`/p/${publicId}?created=true`)
 }
+
+export async function deletePost(postId: string) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
+
+  // 1. Fetch post to get media_path and ensure ownership
+  const { data: post, error: fetchError } = await supabase
+    .from('posts')
+    .select('id, media_path, user_id')
+    .eq('id', postId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (fetchError || !post) {
+    throw new Error('Post not found or unauthorized')
+  }
+
+  // 2. Delete media from storage if exists
+  if (post.media_path) {
+    try {
+      await supabase.storage.from('locked_media').remove([post.media_path])
+    } catch (storageErr) {
+      console.error('Storage deletion error:', storageErr)
+    }
+  }
+
+  // 3. Delete dependent rows (guesses & reminders)
+  await supabase.from('guesses').delete().eq('post_id', postId)
+  await supabase.from('reminders').delete().eq('post_id', postId)
+
+  // 4. Delete the post
+  const { error: deleteError } = await supabase
+    .from('posts')
+    .delete()
+    .eq('id', postId)
+    .eq('user_id', user.id)
+
+  if (deleteError) {
+    console.error('Delete Post Error:', deleteError)
+    throw new Error('Failed to delete UNTIL')
+  }
+
+  revalidatePath('/dashboard')
+  return { success: true }
+}

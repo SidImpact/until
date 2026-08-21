@@ -1,9 +1,15 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
+import { deletePost } from '@/app/actions/post'
 
 export default function DashboardPostCard({ post }: { post: any }) {
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [error, setError] = useState('')
+
   const revealDate = new Date(post.reveal_at)
   const isPastRevealTime = revealDate.getTime() <= new Date().getTime()
   const isLocked = post.status === 'LOCKED' && !isPastRevealTime
@@ -27,9 +33,21 @@ export default function DashboardPostCard({ post }: { post: any }) {
     }
   }
 
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    setError('')
+    try {
+      await deletePost(post.id)
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete UNTIL')
+      setIsDeleting(false)
+      setShowConfirm(false)
+    }
+  }
+
   return (
-    <div className="card flex justify-between items-center" style={{ padding: '20px' }}>
-      <div>
+    <div className="card flex justify-between items-center" style={{ padding: '20px', flexWrap: 'wrap', gap: '16px' }}>
+      <div style={{ flex: '1 1 280px' }}>
         <div className="flex items-center gap-2 mb-2">
           <span style={{ fontSize: '1.25rem' }}>{isLocked ? '🔒' : '🔓'}</span>
           <h3 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -54,20 +72,81 @@ export default function DashboardPostCard({ post }: { post: any }) {
           <span className="flex items-center gap-2">👁 {post.views || 0} views</span>
           <span className="flex items-center gap-2">🔔 {remindersCount} reminders</span>
         </div>
+
+        {error && (
+          <div style={{ color: 'var(--error)', fontSize: '0.75rem', marginTop: '8px' }}>
+            {error}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col items-center gap-2" style={{ width: '100%', maxWidth: '200px' }}>
-        <button 
-          className="btn btn-primary" 
-          style={{ padding: '12px 16px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-          onClick={handleShare}
-        >
-          {isLocked ? '🔗 Share Link' : '🔗 Share Reveal'}
-        </button>
-        <Link href={`/p/${post.public_id}`} className="btn btn-secondary" style={{ padding: '8px 16px', width: '100%', textAlign: 'center', fontSize: '0.875rem' }}>
-          View Post Page
-        </Link>
+        {showConfirm ? (
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--error)', fontWeight: 600 }}>Delete permanently?</span>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              style={{
+                background: '#D32F2F',
+                color: '#FFFFFF',
+                border: 'none',
+                padding: '8px 12px',
+                borderRadius: '20px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: isDeleting ? 'not-allowed' : 'pointer',
+                opacity: isDeleting ? 0.6 : 1,
+              }}
+            >
+              {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+            </button>
+            <button
+              onClick={() => setShowConfirm(false)}
+              disabled={isDeleting}
+              className="btn btn-secondary"
+              style={{
+                padding: '6px 12px',
+                fontSize: '0.75rem',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <>
+            <button 
+              className="btn btn-primary" 
+              style={{ padding: '10px 16px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.875rem' }}
+              onClick={handleShare}
+            >
+              {isLocked ? '🔗 Share Link' : '🔗 Share Reveal'}
+            </button>
+            <Link href={`/p/${post.public_id}`} className="btn btn-secondary" style={{ padding: '8px 16px', width: '100%', textAlign: 'center', fontSize: '0.875rem' }}>
+              View Page
+            </Link>
+            <button
+              type="button"
+              onClick={() => setShowConfirm(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--muted)',
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                textDecoration: 'underline',
+                transition: 'color 0.2s ease',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--error)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
+            >
+              Delete UNTIL 🗑️
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
 }
+

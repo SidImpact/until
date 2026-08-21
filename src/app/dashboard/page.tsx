@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { formatDistanceToNow, isPast } from 'date-fns'
 import DashboardPostCard from '@/components/DashboardPostCard'
+import { logout } from '@/app/(auth)/actions'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -36,8 +37,10 @@ export default async function DashboardPage() {
         
         <div className="flex justify-between items-center mb-8">
           <h1 style={{ margin: 0 }}>Your UNTILs</h1>
-          <form action="/auth/logout" method="post">
-            <button className="btn btn-secondary" style={{ fontSize: '0.875rem', padding: '8px 16px' }}>Logout</button>
+          <form action={logout}>
+            <button type="submit" className="btn btn-secondary" style={{ fontSize: '0.875rem', padding: '8px 16px', cursor: 'pointer' }}>
+              Logout
+            </button>
           </form>
         </div>
 

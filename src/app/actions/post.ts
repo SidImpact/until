@@ -24,41 +24,16 @@ export async function createPost(formData: FormData) {
   const revealDate = formData.get('revealDate') as string
   const revealTime = formData.get('revealTime') as string
   const timezone = formData.get('timezone') as string
-  const media = formData.get('media') as File | null
+  const mediaPath = formData.get('mediaPath') as string | null
 
   if (!message || !revealDate || !revealTime || !timezone) {
     throw new Error('Missing required fields')
   }
 
-  // Combine date and time, assume they are passed in user's local timezone format, then convert to UTC
-  // The client will send the local date/time string, we parse it using the timezone
-  // However, simpler approach: client sends the absolute UTC ISO string
   const utcRevealAt = formData.get('utcRevealAt') as string
 
   if (!utcRevealAt) {
     throw new Error('Missing UTC reveal time')
-  }
-
-  let mediaPath = null
-
-  if (media && media.size > 0) {
-    // Validate file type/size here (Allow up to 25MB for short videos & photos)
-    if (media.size > 25 * 1024 * 1024) {
-      throw new Error('File too large (max 25MB)')
-    }
-    
-    const fileExt = media.name.split('.').pop()
-    const fileName = `${nanoid()}.${fileExt}`
-    mediaPath = `${user.id}/${fileName}`
-
-    const { error: uploadError } = await supabase.storage
-      .from('locked_media')
-      .upload(mediaPath, media)
-
-    if (uploadError) {
-      console.error('Upload Error:', uploadError)
-      throw new Error('Failed to upload media')
-    }
   }
 
   const encryptedContent = encryptContent(message)

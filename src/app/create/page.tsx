@@ -77,7 +77,30 @@ export default function CreatePostPage() {
       data.append('utcRevealAt', utcRevealAt)
 
       if (mediaFile) {
-        data.append('media', mediaFile)
+        if (mediaFile.size > 25 * 1024 * 1024) {
+          throw new Error('File too large (max 25MB)')
+        }
+        
+        const { createClient } = await import('@/utils/supabase/client')
+        const { nanoid } = await import('nanoid')
+        const supabase = createClient()
+        
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('You must be logged in to upload.')
+
+        const fileExt = mediaFile.name.split('.').pop()
+        const fileName = `${nanoid()}.${fileExt}`
+        const mediaPath = `${user.id}/${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('locked_media')
+          .upload(mediaPath, mediaFile)
+
+        if (uploadError) {
+          throw new Error('Failed to upload media: ' + uploadError.message)
+        }
+        
+        data.append('mediaPath', mediaPath)
       }
 
       await createPost(data)
